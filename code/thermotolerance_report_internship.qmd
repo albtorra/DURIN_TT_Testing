@@ -90,11 +90,11 @@ DURIN_data %>%
 #### Function to calculate T50 metrics
 
 ```{r}
-psiiht <- function(Temperature, FvFm, control.temp, id, TempExpTime, plot.est, boots) {
+psiiht <- function(Temperature, FvFm, control.temp, id, TempExpTime, plot.est, boots, plant_nr) {
   l1 <- list(control.temp = control.temp, plot.est = plot.est, boots = boots)
   HTdf <- data.frame(Temperature = Temperature, FvFm = FvFm, id = id, TempExpTime = TempExpTime)
   
-  return(do.call("rbind", by(HTdf, list(HTdf$id, HTdf$TempExpTime), function(df) {
+  return(do.call("rbind", by(HTdf, list(HTdf$id,HTdf$TempExpTime), function(df) {
     Temperature <- df$Temperature
     FvFm <- df$FvFm
     id <- df$id
@@ -190,50 +190,51 @@ if(plot.est == TRUE) {
   plot(NULL, NULL, xlab = "Temperature", ylab = "Fv/Fm", xlim = c(20, 66), ylim = c(0, 0.9), bty = "l", lty = 2)
   
   # Ajouter du texte en haut du graphique
-  mtext(paste(id," ", "T", TempExpTime), side = 3, line = 1, cex = 1, font = 4)
+  mtext(paste(id," ", "T", TempExpTime), side = 3, line = 1, cex = 1, font = 3, col = "#447099")
   
   # Tracer les points
-  points(Temperature, FvFm, xlab = "Temperature", ylab = "Fv/Fm", xlim = c(20, 66), ylim = c(0, 0.85), bty = "l", lty = 2, pch = 5, col = "black")
+  points(Temperature, FvFm, xlab = "Temperature", ylab = "Fv/Fm", xlim = c(20, 66), ylim = c(0, 0.85), bty = "l", lty = 2, pch = 20, col = "azure4")
   
   # Tracer la courbe si les données y sont disponibles
   if(!is.null(y)) {
-    lines(seq(20, 66), y, lwd = 1, col = "black")
+    lines(seq(20, 66), y, lwd = 2.5, col = "#447099")
   }
   
   # Ajouter les courbes des boots si elles sont disponibles
   if(boots > 1) {
     if(!is.null(FvFm.boot)) {
-      lines(seq(20, 66), FvFm.boot[, 1], lty = 3, col = "black")
-      lines(seq(20, 66), FvFm.boot[, 2], lty = 3, col = "black")
+      lines(seq(20, 66), FvFm.boot[, 1], lty = 2, lwd = 1, col = "black")
+      lines(seq(20, 66), FvFm.boot[, 2], lty = 2, lwd = 1, col = "black")
     }
   }
   
   # Afficher les valeurs de Tcrit, T50, et T95 si elles ne sont pas NA
   if(!is.na(mean(na.omit(Tcrit)))) {
-    text(30, 0, paste(round(mean(na.omit(Tcrit)), 1)), pos = 4, col = "light gray")
-    abline(v = round(mean(na.omit(Tcrit)), 1), lty = 2, lwd = 1.5, col = "light gray", cex = 0.8)
+    text(30, 0, paste(round(mean(na.omit(Tcrit)), 1)), pos = 4, col = "goldenrod1")
+    abline(v = round(mean(na.omit(Tcrit)), 1), lty = 2, lwd = 2, col = "goldenrod1", cex = 0.8)
   } else {
-    text(30, 0, "NA", pos = 4, col = "light gray")
+    text(30, 0, "NA", pos = 4, col = "goldenrod1")
   }
 
   if(!is.na(mean(na.omit(T50)))) {
-    text(30, .1, paste(round(mean(na.omit(T50)), 1)), pos = 4, col = "gray")
-    abline(v = round(mean(na.omit(T50)), 1), lty = 2, lwd = 1.5, col = "gray", cex = 0.8)
+    text(30, .1, paste(round(mean(na.omit(T50)), 1)), pos = 4, col = "goldenrod2")
+    abline(v = round(mean(na.omit(T50)), 1), lty = 2, lwd = 2, col = "goldenrod2", cex = 0.8)
   } else {
-    text(30, .1, "NA", pos = 4, col = "gray")
+    text(30, .1, "NA", pos = 4, col = "goldenrod2")
   }
 
   if(!is.na(mean(na.omit(T95)))) {
-    text(30, .2, paste(round(mean(na.omit(T95)), 1)), pos = 4, col = "black")
-    abline(v = round(mean(na.omit(T95)), 1), lty = 2, lwd = 1.5, col = "black", cex = 0.8)
+    text(30, .2, paste(round(mean(na.omit(T95)), 1)), pos = 4, col = "goldenrod3")
+    abline(v = round(mean(na.omit(T95)), 1), lty = 2, lwd = 2, col = "goldenrod3", cex = 0.8)
   } else {
-    text(30, .2, "NA", pos = 4, col = "black")
+    text(30, .2, "NA", pos = 4, col = "goldenrod3")
   }
 }
     
         
     if(length(unique(id)) > 0 && length(unique(TempExpTime)) > 0) {
-      return(data.frame(id = unique(id), 
+      return(data.frame(id = unique(id),
+                        plant_nr = unique(plant_nr),
                         TempExpTime = unique(TempExpTime),
                         Tcrit.mn = round(na.omit(Tcrit), 1),  
                         T50.mn = round(na.omit(T50), 1),  
@@ -263,9 +264,9 @@ DURIN_Methods$PlantSample = paste(DURIN_Methods$species,
                                    sep="_")
 ## Run the function
 
-psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=3)
+psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=117)
 
-t50metrics <- psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=3)
+t50metrics <- psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=3)
 
 
 
