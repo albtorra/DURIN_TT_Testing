@@ -265,9 +265,10 @@ DURIN_Methods$PlantSample = paste(DURIN_Methods$species,
                                    sep="_")
 ## Run the function
 
-psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=90)
+psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=9) 
 
-t50metrics <- psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=9)
+t50metrics <- psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=9) %>% 
+  filter(plant_nr == "1")
 
 ## Export the T50 metrics data
 write.csv(t50metrics, file = 'C:/Users/albat/Dropbox/DURIN/stats/DURIN_TT_Testing/T50_metrics_lowboots.csv', row.names = FALSE)
