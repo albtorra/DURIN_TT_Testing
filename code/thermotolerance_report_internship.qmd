@@ -267,10 +267,10 @@ DURIN_Methods$PlantSample = paste(DURIN_Methods$species,
 
 psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=90)
 
-t50metrics <- psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=90)
+t50metrics <- psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=9)
 
 ## Export the T50 metrics data
-write.csv(t50metrics, file = 'C:/Users/albat/Dropbox/DURIN/stats/DURIN_TT_Testing/T50_metrics.csv', row.names = FALSE)
+write.csv(t50metrics, file = 'C:/Users/albat/Dropbox/DURIN/stats/DURIN_TT_Testing/T50_metrics_lowboots.csv', row.names = FALSE)
 ```
 
 #### Analysis of the variance (ANOVA)
@@ -280,11 +280,11 @@ Next, we want to know if there is a significative difference between the T50 val
 ```{r}
 ## Load the data
 
-T50_data <- read.csv("C:/Users/albat/Dropbox/DURIN/stats/DURIN_TT_Testing/T50_metrics.csv", header = TRUE, sep = ",")
+T50_data <- read.csv("C:/Users/albat/Dropbox/DURIN/stats/DURIN_TT_Testing/T50_metrics_lowboots.csv", header = TRUE, sep = ",")
 
 ## Clean the dataset (select just the T50)
 T50_clean <- T50_data %>% 
-  select(id, plant_nr, TempExpTime, T50.mn) %>% 
+  dplyr::select(id, plant_nr, TempExpTime, T50.mn) %>% 
   dplyr::rename(c("Species"="id", "PlantNr"="plant_nr", "T50"="T50.mn" )) %>% 
   na.omit()
 
@@ -306,7 +306,18 @@ Hypothesis: T50 will vary with Time Treatment. The higher the Time Treatment, th
 
 ```{r}
 T50_clean$TempExpTime <- as.factor(as.character(T50_clean$TempExpTime))   
+
 # Makes TempExpTime into factor variable  
+
+## Reordering a factor's levels
+
+levels(T50_clean$TempExpTime)  # shows the different factor levels in their default order
+
+T50_clean$TempExpTime <- factor(T50_clean$TempExpTime,
+                                 levels = c('1', '5', '10', '15','20'),   # whichever order you choose will be reflected in plots etc
+                                 labels = c('1', '5', '10', '15','20')    # Make sure you match the new names to the original levels!
+                                 )   
+
 
 ## Overview with a boxplot
 
@@ -464,15 +475,6 @@ print(Tk)
 A different strategy to get the compact letters:
 
 ```{r}
-## Reordering a factor's levels
-
-levels(T50_clean$TempExpTime)  # shows the different factor levels in their default order
-
-T50_clean$TempExpTime <- factor(T50_clean$TempExpTime,
-                                 levels = c('1', '5', '10', '15','20'),   # whichever order you choose will be reflected in plots etc
-                                 labels = c('1', '5', '10', '15','20')    # Make sure you match the new names to the original levels!
-                                 )   
-
 
 install.packages("multcomp")
 library(multcomp)
