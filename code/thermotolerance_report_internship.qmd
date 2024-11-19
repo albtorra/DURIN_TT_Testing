@@ -25,9 +25,9 @@ DURIN_data <- read_excel(path = "C:/Users/albat/Dropbox/DURIN/stats/DURIN_TT_Tes
                          sheet = "CV_Methods_Oct2024", col_names = TRUE, trim_ws = TRUE)
 
 # Create concantenated ID code for the plants
-DURIN_data$PlantSampleID = paste(DURIN_data$species, DURIN_data$plant_nr, DURIN_data$TempExp, DURIN_data$TempExpTime, sep = "_")
 
-DURIN_data$PlantSampleID = paste("CV", "_", "P", DURIN_data$plant_nr, "_", DURIN_data$TempExp, "_", "T", DURIN_data$TempExpTime, sep = "")
+# DURIN_data$PlantSampleID = paste(DURIN_data$species, DURIN_data$plant_nr, DURIN_data$TempExp, DURIN_data$TempExpTime, sep = "_")
+# DURIN_data$PlantSampleID = paste("CV", "_", "P", DURIN_data$plant_nr, "_", DURIN_data$TempExp, "_", "T", DURIN_data$TempExpTime, sep = "")
 
 # Rename some columns
 DURIN_data <- dplyr::rename(DURIN_data, "FvFm_Final" = "Fv/Fm_Final")
@@ -35,6 +35,7 @@ DURIN_data <- dplyr::rename(DURIN_data, "FvFm_Hr" = "Fv/Fm_Hr")
 
 ## Create a new concantenated ID code the plants. The last one includes Temperature and Time. So when it's time to run the code, the plot is trying to draw a line between all points for a plant (for a given Temperature and Time) but it can't because every point is unique. So the new ID's will just be a combination of Species + Plant.
 DURIN_data$PlantSampleID = paste("CV", "_", "P", DURIN_data$plant_nr)
+
 ```
 
 #### Exploratory thermal curves
@@ -264,10 +265,246 @@ DURIN_Methods$PlantSample = paste(DURIN_Methods$species,
                                    sep="_")
 ## Run the function
 
-psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=117)
+psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=90)
 
-t50metrics <- psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=3)
+t50metrics <- psiiht(Temperature=DURIN_Methods$TempExp, FvFm=DURIN_Methods$FvFm_Final_num, control.temp=20, id=DURIN_Methods$species, plant_nr=DURIN_Methods$plant_nr, TempExpTime=DURIN_Methods$TempExpTime, plot.est=T, boots=90)
+
+## Export the T50 metrics data
+write.csv(t50metrics, file = 'C:/Users/albat/Dropbox/DURIN/stats/DURIN_TT_Testing/T50_metrics.csv', row.names = FALSE)
+```
+
+#### Analysis of the variance (ANOVA)
+
+Next, we want to know if there is a significative difference between the T50 values based on the different TempExpTime:
+
+```{r}
+## Load the data
+
+T50_data <- read.csv("C:/Users/albat/Dropbox/DURIN/stats/DURIN_TT_Testing/T50_metrics.csv", header = TRUE, sep = ",")
+
+## Clean the dataset (select just the T50)
+T50_clean <- T50_data %>% 
+  select(id, plant_nr, TempExpTime, T50.mn) %>% 
+  dplyr::rename(c("Species"="id", "PlantNr"="plant_nr", "T50"="T50.mn" )) %>% 
+  na.omit()
+
+```
+
+ANOVA is used to assess **variation** of a **continuous dependent variable** (y = T50) across levels of one or more **categorical independent variables** (x =TempExpTime). The basic logic of ANOVA is simple: it compares variation *between* groups to variation *within* groups to determine whether the observed differences are due to chance or not. A ONE-way ANOVA only considers ONE factor.
+
+So, our question is: *How does T50 vary with the Time Treatment?*
+
+-   Our **response variable** is *`T50`*.
+
+-   Our **explanatory variable** is *TempExpTime*, with **5 levels**: 1 min, 5 min, 10 min, 15 min and 20 min.
+
+We want to compare the means of 5 independent groups (T1, T5, T10, T15 and T20) and we have one continuous response variable (T50) and one categorical explanatory variable (Time Treatment). **One-way ANOVA is the appropriate analysis!**
+
+Hypothesis: T50 will vary with Time Treatment. The higher the Time Treatment, the lower the T50.
+
+`Time Treatment`**is our explanatory variable and it is here coded as numerical variable, when it should be coded as factor (categorical variable) with 5 levels** (“1”, “5”, “10”, "15", "20"). The numbers represent the different categories of our explanatory variable, not actual count data. We therefore need to transform `Time Treatment`from numeric to factor variable.
+
+```{r}
+T50_clean$TempExpTime <- as.factor(as.character(T50_clean$TempExpTime))   
+# Makes TempExpTime into factor variable  
+
+## Overview with a boxplot
+
+(time_boxplot <- ggplot(T50_clean, aes(x = TempExpTime, y = T50,
+                                            fill = TempExpTime)) +
+                 geom_boxplot() +
+                 scale_fill_manual(values = c("#97F7C5", "#4ED973", "#08873D","#447099", "#DF536B")) +  
+                 labs(x = "Time Treatment (minutes)", y = "T50 (ºC)") + 
+                 theme_bw())
+              
+
+# Saving boxplot
+ggsave(frog_boxplot, file = "assets/img/frog_boxplot.png", width = 9, height = 7)            
+
+```
+
+Some **boxes don’t overlap, meaning there is likely a statistically significant difference between groups.** To check this (you guessed it) we need **ANOVA!**
+
+```{r}
+### ONE-WAY ANOVA -----
+
+T50_anova <- aov(T50 ~ TempExpTime, data = T50_clean)
+summary(T50_anova)
+
+```
+
+-   **ANOVA partitions the total variance into**: a) **A component that can be explained by the predictor variable** (variance *between* levels of the treatment i.e. Time groups): the first row of your table. b) **A component that cannot be explained by the predictor variable** (variance *within* levels, the residual variance): the second row of your table.
+
+Here, p is highly significant (p \< 2e-16 \*\*\*). This means there is a significant difference between T50 values under different time treatments. Our predictor variable has had a significant effect on your response variable.
+
+ANOVA makes 3 fundamental assumptions:
+
+a\. **Data are normally distributed**.
+
+b\. **Variances are homogeneous**.
+
+c\. **Observations are independent**.
+
+**We need to check that model assumptions are met, in order to trust ANOVA outputs.**
+
+a. **Residuals histogram** and **Normal Q-Q plot**: Normality can be checked via a frequency histogram of the residuals and a quantile plot where the residuals are plotted against the values expected from a normal distribution.
+
+```{r}
+# Checking normality
+par(mfrow = c(1,2))  # This code put two plots in the same window
+hist(T50_anova$residuals)   # Makes histogram of residuals  
+plot(T50_anova, which = 2)   # Makes Q-Q plot
+
+## What to look for: The histogram of residuals should follow a normal (gaussian) distribution and the points in the Q-Q plot should lie mostly on the straight line. --> more or less accomplish
+```
+
+b\. **Residuals VS Fitted plot**: To check that the variation in the residuals is approximately equal across the range of the predictor variable (i.e. check for **homoscedasticity**) we can plot the residuals against the fitted values from the `aov` model object. **Fitted values are what the model predicts for the response variable.**
+
+```{r}
+# Checking homoscedasticity (Homogeneity of variances)
+plot(T50_anova, which = 1)  # Makes residuals VS fitted plot
+
+## What to look for: We want to see a straight red line centered around zero! This means residuals do NOT systematically differ across different groups. --> quite perfectly centered
+```
+
+c. **ANOVA assumes that all replicate measures are independent of each other:**
+
+Two measures are independent if the measurement from one individual gives no indication as to which value the measurement from another individual will produce. Replicate measures must be equally likely to be sampled from the population of possible values for each level. **This issue needs to be considered at the experimental design stage**. If data are grouped in any way, then more complex designs are needed to account for additional factors. A mixed model approach is advised for hierarchical data.
+
+We can communicate our findings in a few ways:
+
+-   **Verbally**: “T50 mean significantly varied with time treatment **(ANOVA, F = 1272, df = 4, p = 2.2e-16)**” **OR** “Time treatment had a statistically significant effect on T50 mean values”.
+
+-   **Visually**: We can visualise our results with a **boxplot**, as we did above, and with a **barplot of group means with standard error bars**.
+
+Firstly, let’s create a new data frame with the `summarise()` function, which allows you to calculate summary statistics including our **sample size (n)**, **mean T50 value** per time treatment level, **standard deviation and standard error values.** Standard deviation is a measure of the spread of values around the mean. Standard error is a measure of the statistical accuracy of an estimate.
+
+```{r}
+summary_stats <- T50_clean %>%
+                 group_by(TempExpTime) %>%
+                 dplyr::summarise(n = n(),  # Calculating sample size n
+                           average_T50 = mean(T50),  
+                           # Calculating mean hatching time
+                           SD = sd(T50))%>%  # Calculating standard deviation
+                 mutate(SE = SD / sqrt(n))  # Calculating standard error
+
+```
+
+Now let's plot our graph:
+
+```{r}
+# Making a barplot
+(T50_barplot_1 <- ggplot(data = summary_stats) +                                  
+                   geom_bar(aes(x = TempExpTime, y = average_T50,
+                               fill = TempExpTime),
+                               stat = "identity", colour = "black") +               
+                   geom_errorbar(aes(x = TempExpTime, ymin = average_T50 - SE,
+                                     ymax = average_T50 + SE), width = 0.2,
+                                     colour="black", alpha=0.9, size=1) +  
+                                     # Adding standard error bars        
+                   scale_fill_manual(values = c("#97F7C5", "#4ED973", "#08873D","#447099", "#DF536B")) +
+                   labs(x = "Time treatment (minutes)", y = " Average T50 value (ºC)") +
+                       # caption = "\nFig.3 Forgspawn exposed to lowest temperature (13°C) was
+                       # the slowest to hatch. Non-overlapping S.E. bars indicate significant
+                       #differences among mean groups. n = 60.") +
+                       # caption = "\nFig.3") +  # Adding caption for figure in panel
+                   theme_bw() +                                              
+                   theme(legend.position = "none"))
+
+## Making a boxplot
+
+(time_boxplot <- ggplot(summary_stats, aes(x = TempExpTime, y = average_T50,
+                                            fill = TempExpTime)) +
+                 geom_boxplot() +
+                 scale_fill_manual(values = c("#97F7C5", "#4ED973", "#08873D","#447099", "#DF536B")) +  
+                 labs(x = "Time Treatment (minutes)", y = "Average T50 value (ºC)") + 
+                 theme_bw())
 
 
+```
+
+We want to include the significance between Time Treatments to the T50_clean dataset boxplot.
+
+```{r}
+## post hoc table
+
+## The means comparison by Tukey’s test can be run on the object resulting from the analysis of variance (anova). The result (below) is an extensive table with all pairwise comparisons and the p-value for each one of them. This data can be tricky to interpret and it is usual to use letters to indicate significant differences among the means.
+
+# Tukey's test
+tukey <- TukeyHSD(T50_anova)
+print(tukey)
+```
+
+```{r}
+## The use of letters to indicate significant differences in pairwise comparisons is called compact letter display, and can simplify the visualisation and discussion of significant differences among means. 
+
+# # compact letter display
+# install.packages("multcompView")
+# library(multcompView)
+cld <- multcompLetters4(T50_anova, tukey)
+print(cld)
+
+## We are going to build a table with the mean, the third quantile and the letters for each treatment (feed). The information on this table will be used to add the letters indicating significant differences to the boxplot. As the compact letter display was generated with the means arranje in drecreasing order, we will also build the table with the means in decreasing order.
+
+# table with factors and 3rd quantile
+Tk <- T50_clean %>% 
+  group_by(TempExpTime) %>%
+  summarise(mean=mean(T50), quant = quantile(T50, probs = 0.75))
+
+ 
+  arrange(desc(mean))
+
+# extracting the compact letter display and adding to the Tk table
+cld <- as.data.frame.list(cld$TempExpTime)
+Tk$cld <- cld$Letters
+
+print(Tk)
+```
+
+A different strategy to get the compact letters:
+
+```{r}
+## Reordering a factor's levels
+
+levels(T50_clean$TempExpTime)  # shows the different factor levels in their default order
+
+T50_clean$TempExpTime <- factor(T50_clean$TempExpTime,
+                                 levels = c('1', '5', '10', '15','20'),   # whichever order you choose will be reflected in plots etc
+                                 labels = c('1', '5', '10', '15','20')    # Make sure you match the new names to the original levels!
+                                 )   
+
+
+install.packages("multcomp")
+library(multcomp)
+
+install.packages("emmeans")
+library(emmeans)
+
+## Use {emmeans} to estimate marginal means.
+
+T50.lm <- lm(T50 ~ TempExpTime, data = T50_clean)
+
+T50.emm <- emmeans(T50.lm, "TempExpTime")
+T50.emm
+
+## Generate compact letter displays using the cld() function
+multcomp::cld(T50.emm, Letters = LETTERS)
+
+# NOTE: If two or more means share the same grouping symbol, then we cannot show them to be different. But we also did not show them to be the same.
+
+## Save as a data frame so we can create the CLD plot.
+cld_df <- multcomp::cld(T50.emm, Letters = LETTERS)
+names(cld_df)
+
+## Now create the plot.
+ggplot(cld_df) +
+  aes(x = TempExpTime, y = emmean, color = TempExpTime) +
+  geom_point(position = position_dodge(width = 0.9)) +
+  geom_errorbar(mapping = aes(ymin = lower.CL, ymax = upper.CL), 
+                              position = position_dodge(width = 0.9),
+                width = 0.1) +
+  geom_text(mapping = aes(label = .group, y = upper.CL * 1.05), 
+            position = position_dodge(width = 0.9), 
+            show.legend = F)
 
 ```
